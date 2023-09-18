@@ -14,7 +14,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from cex_src.cex import CEXProject
 from cex_src.cex.cfg_extractors.angr_plugin.common import AngrCfgExtractor
 from collections import namedtuple
-from apk_analyzer.utils import md5_hash, find_jni_functions_angr
+from apk_analyzer.utils import sha256_hash, find_jni_functions_angr
 from apk_analyzer.utils.prepare_state import prepare_initial_state
 from apk_analyzer.utils.timeout_decorator import TimeoutError, timeout
 from apk_analyzer.utils.path_engine import PathEngine, generate_paths
@@ -63,7 +63,7 @@ class NativeLibAnalyzer(object):
             self.ghidra = CEXProject.pm.get_plugin_by_name("Ghidra")
         self.libname = os.path.basename(libpath)
         self.libpath = libpath
-        self.libhash = md5_hash(self.libpath)
+        self.libhash = sha256_hash(self.libpath)
 
         if "/armeabi/" in libpath:
             self.arch = "armeabi"

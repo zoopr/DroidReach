@@ -233,9 +233,11 @@ def _save_graph(apka, proj, graph, libpath, addr, is_cg):
     out_dir = os.path.join(apka.wdir, "callgraphs" if is_cg else "icfgs")
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
+    print(f"Writing to directory {out_dir}")
 
     libname = os.path.basename(libpath)
     out_filename = os.path.join(out_dir, "graph_%s+%#x.json" % (libname, addr))
+    print(f"Writing to file {out_filename}")
     if not os.path.exists(out_filename):
         bin_info = list()
         for b in proj.get_bins():
@@ -453,7 +455,7 @@ def _full_analysis(apka, libs, disable_angr, disable_ghidra, disable_multilib, r
                 jni_methods[method.libpath] = list()
             jni_methods[method.libpath].append(method.offset)
 
-        print("[+] Defining JNI functions in Ghidra... ", end="")
+        print(f"[+] Defining JNI functions in Ghidra... ", end="")
         start = time.time()
         for jni_lib in jni_methods:
             ghidra.define_functions(jni_lib, jni_methods[jni_lib])

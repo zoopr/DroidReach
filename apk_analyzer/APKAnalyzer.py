@@ -14,7 +14,7 @@ from androguard.session import Session
 from androguard.misc import AnalyzeAPK
 from .JavaNameDemangler import JavaNameDemangler, FailedDemanglingError
 from .NativeLibAnalyzer import NativeLibAnalyzer
-from .utils import md5_hash, connected_nodes, get_native_methods, get_static_constructors_map, check_if_jlong_as_cpp_obj, check_malformed_elf, LCSubStr, iterate_files
+from .utils import sha256_hash, connected_nodes, get_native_methods, get_static_constructors_map, check_if_jlong_as_cpp_obj, check_malformed_elf, LCSubStr, iterate_files
 from .utils.app_component import AppComponent
 from .utils.path_engine import PathEngine, generate_paths
 from .utils.timeout_decorator import TimeoutError, timeout
@@ -43,7 +43,7 @@ class APKAnalyzer(object):
     #        ptrs and only use the API get_native_analyzer
 
     log = logging.getLogger("ap.APKAnalyzer")
-    log.setLevel(logging.WARNING)
+    log.setLevel(logging.INFO)
 
     tmp_dir = "/dev/shm/apk_analyzer_data"
 
@@ -65,7 +65,7 @@ class APKAnalyzer(object):
         self.use_flowdroid = use_flowdroid
         self.apk_path = apk_path
         self.apk_name = os.path.basename(self.apk_path).replace(".apk", "")
-        self.apk_hash = md5_hash(self.apk_path)
+        self.apk_hash = sha256_hash(self.apk_path)
         self.wdir = os.path.join(APKAnalyzer.tmp_dir, self.apk_hash)
         self.apk, self.dvm, self.analysis = None, None, None
         self.androguard_session = None
@@ -308,7 +308,7 @@ class APKAnalyzer(object):
                 break
         APKAnalyzer.log.info(f"found {len(paths)} paths")
 
-        self.paths = {"md5": self.apk_hash, "paths": paths}
+        self.paths = {"sha256": self.apk_hash, "paths": paths}
 
         with open(self.paths_json_filename, 'w+') as f_out:
             f_out.write(json.dumps(self.paths, indent=4))
