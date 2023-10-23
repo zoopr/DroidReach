@@ -82,6 +82,54 @@ def _show_cfg_of(apka, libs, thing):
     else:
         show_java_cfg(thing)
 
+def _full_consumer_producer_pipeline(apka, libs=None, reachable=False):
+    # print native functions stub
+    methods = None
+    if reachable:
+        methods = apka.find_reachable_native_methods()
+    else:
+        methods = apka.find_native_methods()
+    
+    for class_name, method_name, args_str in methods:
+        native_impls = apka.find_native_implementations(method_name, class_name, args_str, libs)
+        if len(native_impls) == 0:
+            print("   * no implementation found")
+            continue
+        for native_impl in native_impls:
+            print("   * %s\t%#x" % (native_impl.analyzer.libpath, native_impl.offset))
+
+        # consumer stub
+        consumer = ".".join(class_name)+f".{method_name}"
+        consumer_impl = None
+        for method in apka.find_native_methods_implementations(libs):
+            if method.class_name == class_name and method.method_name == method_name:
+                consumer_impl = method
+                break
+        if consumer_impl is None:
+            print("[+] Unable to find method", consumer)
+            return
+        
+        print("[+] Checking if", consumer, "is a consumer")
+        args = apka.jlong_as_cpp_obj(consumer_impl, use_angr=False)
+        print("[!] The consumer uses the args %s as jlong pointers" % str(args))
+
+        # Producer stub
+        if len(args) > 0:
+            print("[+] Finding producer for method", consumer)
+            maybe_producers = apka.find_potential_producers(consumer_impl, lib_whitelist=libs, reachable=False)
+            print("[+] Found %d possible producers" % len(maybe_producers))
+            for maybe_producer in maybe_producers:
+                print(maybe_producer)
+                vtable = apka.vtable_from_jlong_ret(maybe_producer, use_angr=False)
+                if vtable is not None:
+                    print("[!] Producer: %s %s %s @ %s %#x - vtable %#x" % \
+                        (maybe_producer.class_name, maybe_producer.method_name, maybe_producer.args_str, maybe_producer.libpath, maybe_producer.offset, vtable))
+                    break
+        
+
+        
+    
+
 def _print_native_functions(apka, libs=None, reachable=False):
     methods = None
     if reachable:
@@ -570,6 +618,9 @@ def main(args):
         save_graphs = True
         _full_analysis(apka, libs, disable_angr, disable_ghidra, disable_multilib, reachable_analysis)
         return 0
+    
+    if args.full_consumer:
+        _full_consumer_producer_pipeline(apka,libs,reachable_analysis)
 
     if args.print_native_functions:
         _print_native_functions(apka, libs, reachable_analysis)
@@ -606,6 +657,7 @@ def main(args):
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description='DroidReach APK analyzer')
     parser.add_argument("--cfg-dot", help="Print the CFG of the function in dot format (either class;->method(args), or lib.so@offset/name)", nargs="?")
+    parser.add_argument("--full-consumer", help="Execute all steps in the Consumer-Producer pipeline automatically. Supports the --reachable flag", action="store_true")
     parser.add_argument("--print-native-functions", help="Print native functions", action="store_true")
     parser.add_argument("--check-consumer", help="Check if the method is a consumer", nargs="?")
     parser.add_argument("--find-producer", help="Look for a producer given a consumer", nargs="?")
