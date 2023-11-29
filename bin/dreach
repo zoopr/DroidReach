@@ -82,7 +82,7 @@ def _show_cfg_of(apka, libs, thing):
     else:
         show_java_cfg(thing)
 
-def _full_consumer_producer_pipeline(apka, libs=None, reachable=False):
+def _full_consumer_producer_pipeline(apka, libs=None, reachable=False, disable_angr=False):
     # print native functions stub
     methods = None
     if reachable:
@@ -110,7 +110,7 @@ def _full_consumer_producer_pipeline(apka, libs=None, reachable=False):
             return
         
         print("[+] Checking if", consumer, "is a consumer")
-        args = apka.jlong_as_cpp_obj(consumer_impl, use_angr=False)
+        args = apka.jlong_as_cpp_obj(consumer_impl, use_angr=not disable_angr)
         print("[!] The consumer uses the args %s as jlong pointers" % str(args))
 
         # Producer stub
@@ -120,7 +120,7 @@ def _full_consumer_producer_pipeline(apka, libs=None, reachable=False):
             print("[+] Found %d possible producers" % len(maybe_producers))
             for maybe_producer in maybe_producers:
                 print(maybe_producer)
-                vtable = apka.vtable_from_jlong_ret(maybe_producer, use_angr=False)
+                vtable = apka.vtable_from_jlong_ret(maybe_producer, use_angr=not disable_angr)
                 if vtable is not None:
                     print("[!] Producer: %s %s %s @ %s %#x - vtable %#x" % \
                         (maybe_producer.class_name, maybe_producer.method_name, maybe_producer.args_str, maybe_producer.libpath, maybe_producer.offset, vtable))
@@ -166,7 +166,7 @@ def _find_producer(apka, consumer, libs=None, reachable=False):
     print("[+] Found %d possible producers" % len(maybe_producers))
     for maybe_producer in maybe_producers:
         print(maybe_producer)
-        vtable = apka.vtable_from_jlong_ret(maybe_producer, use_angr=False)
+        vtable = apka.vtable_from_jlong_ret(maybe_producer, use_angr=args.use_angr)
         if vtable is not None:
             print("[!] Producer: %s %s %s @ %s %#x - vtable %#x" % \
                 (maybe_producer.class_name, maybe_producer.method_name, maybe_producer.args_str, maybe_producer.libpath, maybe_producer.offset, vtable))
@@ -620,7 +620,7 @@ def main(args):
         return 0
     
     if args.full_consumer:
-        _full_consumer_producer_pipeline(apka,libs,reachable_analysis)
+        _full_consumer_producer_pipeline(apka,libs,reachable_analysis,disable_angr)
 
     if args.print_native_functions:
         _print_native_functions(apka, libs, reachable_analysis)
