@@ -108,7 +108,7 @@ class NativeJLongAnalyzer(object):
 
             if arg_type == "long":
                 data, ptr = self.mk_cpp_obj(state, arg_id-2)
-                reverse_dict[ptr] = arg_id - 2
+                reverse_dict[claripy.BVV(ptr, self.project.arch.bits)] = arg_id - 2
             else:
                 data = self.mk_type(arg_id, arg_type)
 
