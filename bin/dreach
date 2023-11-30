@@ -84,6 +84,7 @@ def _show_cfg_of(apka, libs, thing):
 
 def _full_consumer_producer_pipeline(apka, libs=None, reachable=False, disable_angr=False):
     # print native functions stub
+    producer_cache = {}
     methods = None
     if reachable:
         methods = apka.find_reachable_native_methods()
@@ -99,7 +100,7 @@ def _full_consumer_producer_pipeline(apka, libs=None, reachable=False, disable_a
             print("   * %s\t%#x" % (native_impl.analyzer.libpath, native_impl.offset))
 
         # consumer stub
-        consumer = ".".join(class_name)+f".{method_name}"
+        consumer = class_name + method_name
         consumer_impl = None
         for method in apka.find_native_methods_implementations(libs):
             if method.class_name == class_name and method.method_name == method_name:
@@ -107,7 +108,7 @@ def _full_consumer_producer_pipeline(apka, libs=None, reachable=False, disable_a
                 break
         if consumer_impl is None:
             print("[+] Unable to find method", consumer)
-            return
+            continue
         
         print("[+] Checking if", consumer, "is a consumer")
         args = apka.jlong_as_cpp_obj(consumer_impl, use_angr=not disable_angr)
@@ -119,15 +120,16 @@ def _full_consumer_producer_pipeline(apka, libs=None, reachable=False, disable_a
             maybe_producers = apka.find_potential_producers(consumer_impl, lib_whitelist=libs, reachable=False)
             print("[+] Found %d possible producers" % len(maybe_producers))
             for maybe_producer in maybe_producers:
-                print(maybe_producer)
-                vtable = apka.vtable_from_jlong_ret(maybe_producer, use_angr=not disable_angr)
+                if maybe_producer.offset in producer_cache:
+                    vtable = producer_cache[maybe_producer.offset]
+                else:
+                    vtable = apka.vtable_from_jlong_ret(maybe_producer, use_angr=not disable_angr)
+                    producer_cache[maybe_producer.offset] = vtable
                 if vtable is not None:
                     print("[!] Producer: %s %s %s @ %s %#x - vtable %#x" % \
                         (maybe_producer.class_name, maybe_producer.method_name, maybe_producer.args_str, maybe_producer.libpath, maybe_producer.offset, vtable))
                     break
-        
-
-        
+    print(f"[!CONS] Unique Producer cache length: {len(producer_cache)}")        
     
 
 def _print_native_functions(apka, libs=None, reachable=False):
@@ -274,7 +276,7 @@ def _gen_path(apka, java_method, cex_proj, native_graph, src_native, dst_native,
                     (binfo.name if binfo is not None else "unk", insn.addr - (binfo.min_addr if binfo is not None else 0), insn.addr, insn.mnemonic))
         return res
 
-def _save_graph(apka, proj, graph, libpath, addr, is_cg):
+def _save_graph(apka, proj, graph, libpath, addr, is_cg, to_stdout=True):
     if not save_graphs:
         return
 
@@ -294,11 +296,17 @@ def _save_graph(apka, proj, graph, libpath, addr, is_cg):
                 "min_addr": b.min_addr,
                 "max_addr": b.max_addr
             })
-        with open(out_filename, "w") as fout:
-            fout.write("{\n\t\"mappings\": %s,\n\t\"nodes\": %s\n}\n" % (
+        if to_stdout is True:
+            print("{\n\t\"mappings\": %s,\n\t\"nodes\": %s\n}\n" % (
                 json.dumps(bin_info),
                 cex_to_json(graph)
             ))
+        else:
+            with open(out_filename, "w") as fout:
+                fout.write("{\n\t\"mappings\": %s,\n\t\"nodes\": %s\n}\n" % (
+                    json.dumps(bin_info),
+                    cex_to_json(graph)
+                ))
 
 def _find_path_to(apka, what, libs=None, reachable=False, disable_multilib=False, disable_angr=False, disable_ghidra=False, full_icfg_path=False, jni_methods_whitelist=None, skip_java=False):
     lib, offset = what.split("@")
