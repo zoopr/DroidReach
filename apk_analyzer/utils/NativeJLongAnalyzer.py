@@ -108,7 +108,7 @@ class NativeJLongAnalyzer(object):
 
             if arg_type == "long":
                 data, ptr = self.mk_cpp_obj(state, arg_id-2)
-                reverse_dict[claripy.BVV(ptr, self.project.arch.bits)] = arg_id - 2
+                reverse_dict[ptr] = arg_id - 2
             else:
                 data = self.mk_type(arg_id, arg_type)
 
@@ -200,10 +200,10 @@ class NativeJLongAnalyzer(object):
             sys.stderr.write("WARNING: %d errored: %s\n"  % (len(smgr.errored), smgr.errored[0]))
         if len(smgr.found) > 0:
             for found_s in smgr.found:
-                if found_s.regs.pc not in arg_data:
-                    sys.stderr.write(f"WARNING: PC reg {found_s.regs.pc} not in map {arg_data}")
+                if found_s.regs.pc._model_concrete.value not in arg_data:
+                    sys.stderr.write(f"WARNING: PC reg {found_s.regs.pc._model_concrete.value} not in map {arg_data}")
                 else:
-                    tainted_calls.append(arg_data[found_s.regs.pc])
+                    tainted_calls.append(arg_data[found_s.regs.pc._model_concrete.value])
         if i < 5:
             sys.stderr.write("WARNING: %s @ %#x\n" % (self.libpath, addr))
             sys.stderr.write("WARNING: very few iterations (%d)\n" % i)
