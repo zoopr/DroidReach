@@ -40,7 +40,6 @@ class NativeJLongAnalyzer(object):
 
         NativeJLongAnalyzer._hook_fp_models(self.project)
         self.obj     = JObject(self.project)
-        self.cpp_obj = JObject(self.project)
         self.vtable  = JObject(self.project)
         self.struct  = JObject(self.project)
 
@@ -74,28 +73,23 @@ class NativeJLongAnalyzer(object):
             return claripy.BVS("%s_%d" % (arg_type, arg_id), typ_size)
         return claripy.BVV(get_type(self.project, arg_type).ptr, typ_size)
 
-    def mk_cpp_obj(self, state, param_i):
+    def mk_cpp_obj(self, state, param_i):        
+        cpp_obj = JObject(self.project)
         if NativeJLongAnalyzer.DEBUG:
-            print("obj ptr:",    claripy.BVV(self.cpp_obj.ptr, self.project.arch.bits))
-            print("vtable ptr:", claripy.BVV(self.vtable.ptr, self.project.arch.bits))
-
-        state.memory.store(
-            self.cpp_obj.ptr,
-            claripy.BVV(self.vtable.ptr, self.project.arch.bits),
-            endness=self.project.arch.memory_endness)
-        for i in range(0, 50 * self.project.arch.bytes, self.project.arch.bytes):
+            print("Creating obj for arg ",  param_i)
+            print("obj ptr:",    claripy.BVV(cpp_obj.ptr, self.project.arch.bits))
+        
+        # Recursive vtable+member list means any member dereference also ends up in the main object's entry point (itself!)
+        for i in range(0, 500 * self.project.arch.bytes, self.project.arch.bytes):
             state.memory.store(
-                self.vtable.ptr + i,
-                claripy.BVS("obj_%d_vtable_entry_%d" % (param_i, i), self.project.arch.bits),
+                cpp_obj.ptr + i,
+                claripy.BVV(cpp_obj.ptr, self.project.arch.bits),
                 endness=self.project.arch.memory_endness)
 
         if NativeJLongAnalyzer.DEBUG:
-            print("vtable ptr (load):", state.memory.load(self.cpp_obj.ptr, self.project.arch.bits // 8, endness=self.project.arch.memory_endness))
-            print("first vtable entry (load):", state.memory.load(
-                state.memory.load(self.cpp_obj.ptr, self.project.arch.bits // 8, endness=self.project.arch.memory_endness),
-                self.project.arch.bits // 8, endness=self.project.arch.memory_endness))
+            print("vtable ptr (load):", state.memory.load(cpp_obj.ptr, self.project.arch.bits // 8, endness=self.project.arch.memory_endness))
 
-        return claripy.BVV(self.cpp_obj.ptr, self.project.arch.bits)
+        return (claripy.BVV(cpp_obj.ptr, self.project.arch.bits),cpp_obj.ptr)
 
     def prepare_state_cpp(self, addr, args):
         state = self.project.factory.blank_state(addr=addr)
@@ -104,6 +98,7 @@ class NativeJLongAnalyzer(object):
             self.obj.ptr, self.project.arch.bits)
 
         parsed_args = dict()
+        reverse_dict = dict()
         for i, a in enumerate(args.split(",")):
             a = a.strip().replace(" ", "")
             parsed_args[i+2] = a
@@ -112,7 +107,8 @@ class NativeJLongAnalyzer(object):
             arg_type = parsed_args[arg_id]
 
             if arg_type == "long":
-                data = self.mk_cpp_obj(state, arg_id-2)
+                data, ptr = self.mk_cpp_obj(state, arg_id-2)
+                reverse_dict[ptr] = arg_id - 2
             else:
                 data = self.mk_type(arg_id, arg_type)
 
@@ -124,7 +120,7 @@ class NativeJLongAnalyzer(object):
             else:
                 state.stack_push(data)
         state.solver._solver.timeout = 2000 # 2 seconds as timeout
-        return state
+        return (state, reverse_dict)
 
     def _is_thumb(self, addr):
         if self.project.arch.name != "ARMEL":
@@ -159,21 +155,9 @@ class NativeJLongAnalyzer(object):
         if is_thumb:
             addr = addr + 1
 
-        state = self.prepare_state_cpp(addr, args)
+        state, arg_data = self.prepare_state_cpp(addr, args)
 
         tainted_calls = list()
-        def checkTaintedCall(state):
-            exit_target = state.inspect.exit_target
-            if NativeJLongAnalyzer.DEBUG:
-                print("checkTaintedCall: ", exit_target)
-            if exit_target is None or isinstance(exit_target, int):
-                return
-            for symb_name in exit_target.variables:
-                if "vtable_entry_" in symb_name:
-                    print("[FOUND VCALL] libpath %s; offset %#x; state %s; target %s" % (self.libpath, addr, str(state), str(exit_target)))
-                    tainted_calls.append(symb_name)
-                    break
-        state.inspect.b('exit', when=angr.BP_BEFORE, action=checkTaintedCall)
 
         if NativeJLongAnalyzer.DEBUG:
             print("entry r0", state.regs.r0)
@@ -200,7 +184,7 @@ class NativeJLongAnalyzer(object):
                     print(s.step())
                     input("> Press a key to continue...")
 
-            smgr.explore(n=1)
+            smgr.explore(n=1, find=list(arg_data.keys()))
             if NativeJLongAnalyzer.DEBUG:
                 print(i, smgr, smgr.errored, tainted_calls)
             if len(smgr.active) > NativeJLongAnalyzer.MAXSTATES:
@@ -214,6 +198,12 @@ class NativeJLongAnalyzer(object):
         if len(smgr.errored) > 0:
             sys.stderr.write("WARNING: %s @ %#x\n" % (self.libpath, addr))
             sys.stderr.write("WARNING: %d errored: %s\n"  % (len(smgr.errored), smgr.errored[0]))
+        if len(smgr.found) > 0:
+            for found_s in smgr.found:
+                if found_s.regs.pc not in arg_data:
+                    sys.stderr.write(f"WARNING: PC reg {found_s.regs.pc} not in map {arg_data}")
+                else:
+                    tainted_calls.append(arg_data[found_s.regs.pc])
         if i < 5:
             sys.stderr.write("WARNING: %s @ %#x\n" % (self.libpath, addr))
             sys.stderr.write("WARNING: very few iterations (%d)\n" % i)
@@ -221,7 +211,7 @@ class NativeJLongAnalyzer(object):
             sys.stderr.write("WARNING: %s @ %#x\n" % (self.libpath, addr))
             sys.stderr.write("WARNING: killed for generating too many states\n")
 
-        return list(map(lambda s: int(s.split("_")[1]), tainted_calls))
+        return tainted_calls
 
     def check_cpp_obj(self, addr, args):
         try:
