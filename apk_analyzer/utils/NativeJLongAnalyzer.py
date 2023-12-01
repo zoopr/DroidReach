@@ -157,7 +157,7 @@ class NativeJLongAnalyzer(object):
 
         state, arg_data = self.prepare_state_cpp(addr, args)
 
-        tainted_calls = list()
+        tainted_calls = set()
 
         if NativeJLongAnalyzer.DEBUG:
             print("entry r0", state.regs.r0)
@@ -203,7 +203,7 @@ class NativeJLongAnalyzer(object):
                 if found_s.regs.pc._model_concrete.value not in arg_data:
                     sys.stderr.write(f"WARNING: PC reg {found_s.regs.pc._model_concrete.value} not in map {arg_data}")
                 else:
-                    tainted_calls.append(arg_data[found_s.regs.pc._model_concrete.value])
+                    tainted_calls.add(arg_data[found_s.regs.pc._model_concrete.value])
         if i < 5:
             sys.stderr.write("WARNING: %s @ %#x\n" % (self.libpath, addr))
             sys.stderr.write("WARNING: very few iterations (%d)\n" % i)
