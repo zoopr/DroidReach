@@ -82,11 +82,11 @@ def _show_cfg_of(apka, libs, thing):
     else:
         show_java_cfg(thing)
 
-def _full_consumer_producer_pipeline(apka, libs=None, reachable=False, disable_angr=False):
+def _full_consumer_producer_pipeline(apka, libs=None):
     # print native functions stub
     producer_cache = {}
     methods = None
-    if reachable:
+    if args.reachable:
         methods = apka.find_reachable_native_methods()
     else:
         methods = apka.find_native_methods()
@@ -111,19 +111,19 @@ def _full_consumer_producer_pipeline(apka, libs=None, reachable=False, disable_a
             continue
         
         print("[+] Checking if", consumer, "is a consumer")
-        args = apka.jlong_as_cpp_obj(consumer_impl, use_angr=not disable_angr)
-        print("[!] The consumer uses the args %s as jlong pointers" % str(args))
+        idx_args = apka.jlong_as_cpp_obj(consumer_impl, use_angr=not args.disable_angr)
+        print("[!] The consumer uses the args %s as jlong pointers" % str(idx_args))
 
         # Producer stub
-        if len(args) > 0:
+        if len(idx_args) > 0:
             print("[+] Finding producer for method", consumer)
-            maybe_producers = apka.find_potential_producers(consumer_impl, lib_whitelist=libs, reachable=False)
+            maybe_producers = apka.find_potential_producers(consumer_impl, lib_whitelist=libs, reachable=args.reachable)
             print("[+] Found %d possible producers" % len(maybe_producers))
             for maybe_producer in maybe_producers:
                 if maybe_producer.offset in producer_cache:
                     vtable = producer_cache[maybe_producer.offset]
                 else:
-                    vtable = apka.vtable_from_jlong_ret(maybe_producer, use_angr=not disable_angr)
+                    vtable = apka.vtable_from_jlong_ret(maybe_producer, use_angr=not args.disable_angr)
                     producer_cache[maybe_producer.offset] = vtable
                 if vtable is not None:
                     print("[!] Producer: %s %s %s @ %s %#x - vtable %#x" % \
@@ -168,7 +168,7 @@ def _find_producer(apka, consumer, libs=None, reachable=False):
     print("[+] Found %d possible producers" % len(maybe_producers))
     for maybe_producer in maybe_producers:
         print(maybe_producer)
-        vtable = apka.vtable_from_jlong_ret(maybe_producer, use_angr=args.use_angr)
+        vtable = apka.vtable_from_jlong_ret(maybe_producer, use_angr=not args.disable_angr)
         if vtable is not None:
             print("[!] Producer: %s %s %s @ %s %#x - vtable %#x" % \
                 (maybe_producer.class_name, maybe_producer.method_name, maybe_producer.args_str, maybe_producer.libpath, maybe_producer.offset, vtable))
@@ -189,8 +189,8 @@ def _check_consumer(apka, consumer, libs=None):
         return
 
     print("[+] Checking if", consumer, "is a consumer")
-    args = apka.jlong_as_cpp_obj(consumer_impl, use_angr=False)
-    print("[!] The consumer uses the args %s as jlong pointers" % str(args))
+    idx_args = apka.jlong_as_cpp_obj(consumer_impl, use_angr=not args.disable_angr)
+    print("[!] The consumer uses the args %s as jlong pointers" % str(idx_args))
 
 def _find_vtable(apka, producer, libs=None, reachable=False):
     class_name  = "L" + "/".join(producer.split(".")[:-1]) + ";"
@@ -211,7 +211,7 @@ def _find_vtable(apka, producer, libs=None, reachable=False):
     print(producer_impl)
     print("[+] Finding vtable for producer", producer, "@", hex(producer_impl.offset))
     angr_emu.use_timeout_for_cfg = True
-    vtable = apka.vtable_from_jlong_ret(producer_impl, use_angr=False)
+    vtable = apka.vtable_from_jlong_ret(producer_impl, use_angr=not args.disable_angr)
     if vtable is not None:
         print("[!] vtable:", hex(vtable))
     else:
