@@ -170,7 +170,7 @@ class NativeJLongAnalyzer(object):
         i    = 0
         smgr = self.project.factory.simgr(state, veritesting=False, save_unsat=False)
         while len(smgr.active) > 0:
-            if len(tainted_calls) > 0 or i > NativeJLongAnalyzer.MAXITER:
+            if len(smgr.found) > 0 or i > NativeJLongAnalyzer.MAXITER:
                 break
 
             if False and NativeJLongAnalyzer.DEBUG:
