@@ -628,7 +628,7 @@ def main(args):
         return 0
     
     if args.full_consumer:
-        _full_consumer_producer_pipeline(apka,libs,reachable_analysis,disable_angr)
+        _full_consumer_producer_pipeline(apka,libs)
 
     if args.print_native_functions:
         _print_native_functions(apka, libs, reachable_analysis)

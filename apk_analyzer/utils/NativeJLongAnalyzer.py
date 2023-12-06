@@ -24,7 +24,7 @@ class DummyEmptyModel(angr.SimProcedure):
         return None
 
 class NativeJLongAnalyzer(object):
-    DEBUG     = False
+    DEBUG     = True
     MAXITER   = sys.maxsize
     MAXSTATES = 10000
 
@@ -168,7 +168,7 @@ class NativeJLongAnalyzer(object):
         start    = time.time()
 
         i    = 0
-        smgr = self.project.factory.simgr(state, veritesting=False, save_unsat=False)
+        smgr = self.project.factory.simgr(state, veritesting=True, save_unsat=False)
         while len(smgr.active) > 0:
             if len(smgr.found) > 0 or i > NativeJLongAnalyzer.MAXITER:
                 break
