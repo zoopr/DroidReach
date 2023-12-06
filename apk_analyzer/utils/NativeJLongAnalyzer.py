@@ -169,6 +169,9 @@ class NativeJLongAnalyzer(object):
 
         i    = 0
         smgr = self.project.factory.simgr(state, veritesting=True, save_unsat=False)
+        # Hack: initialize found stash before "find" keyword is used in smgr.explore()
+        smgr.stash(to_stash="found")
+        smgr.unstash(from_stash="found")
         while len(smgr.active) > 0:
             if len(smgr.found) > 0 or i > NativeJLongAnalyzer.MAXITER:
                 break
