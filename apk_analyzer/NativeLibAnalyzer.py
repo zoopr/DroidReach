@@ -272,6 +272,7 @@ class NativeLibAnalyzer(object):
                     except:
                         pass
                     if addr is not None and addr == 0xdeadbeee:
+                        print(f"reached deadbeee state. R0: {s.regs.r0}")
                         vtable = s.mem[s.regs.r0].uint32_t.resolved
                         if not vtable.symbolic and vtable.args[0] > 0x400000:
                             first_entry = s.mem[vtable].uint32_t.resolved
