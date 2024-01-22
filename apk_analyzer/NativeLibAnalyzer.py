@@ -252,23 +252,22 @@ class NativeLibAnalyzer(object):
         state.ip = offset
         state.regs.lr = claripy.BVV(0xdeadbeee, 32)
 
-        def checkDeadbeeeExit(state):
-            exit_target = state.inspect.exit_target
-            print("checkDeadbeeeExit: ", exit_target)
-            print(f"R0: {state.regs.r0} R1: {state.regs.r1} R2: {state.regs.r2}")
-        state.inspect.b('exit', when=angr.BP_BEFORE, action=checkDeadbeeeExit)
-
         vtables = list()
 
         i        = 0
         max_time = 60 * 15
         start    = time.time()
         smgr     = proj.factory.simgr(state, veritesting=False, save_unsat=False)
+
+        # Hack: initialize found stash before "find" keyword is used in smgr.explore()
+        smgr.stash(to_stash="found")
+        smgr.unstash(from_stash="found")
+
         while len(smgr.active) > 0:
-            if len(vtables) > 0 or i > MAXITER:
+            if len(smgr.found) > 0 or len(vtables) > 0 or i > MAXITER:
                 break
 
-            smgr.explore(n=1)
+            smgr.explore(n=1, find=0xdeadbeee)
             for stash in smgr.stashes:
                 q = smgr.stashes[stash]
                 for s in q:
@@ -305,7 +304,17 @@ class NativeLibAnalyzer(object):
         if len(smgr.active) > MAXSTATES:
             sys.stderr.write("WARNING: %s @ %#x\n" % (self.libpath, offset))
             sys.stderr.write("WARNING: killed for generating too many states\n")
-
+        if len(smgr.found) > 0:
+            (f"Found {len(smgr.found)} states ; {(self.libpath, offset)}")
+            for s in smgr.found:
+                print(f"reached deadbeee state. R0: {s.regs.r0} R1: {s.regs.r1} R2: {s.regs.r2}")
+                vtable = s.mem[s.regs.r0].uint32_t.resolved
+                if not vtable.symbolic and vtable.args[0] > 0x400000:
+                    first_entry = s.mem[vtable].uint32_t.resolved
+                    if not first_entry.symbolic:
+                        section = proj.loader.find_section_containing(first_entry.args[0])
+                        if section is not None and section.name == ".text":
+                            vtables.append(vtable.args[0])
         if len(vtables) > 0:
             return vtables[0]
         return None
