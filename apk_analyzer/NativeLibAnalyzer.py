@@ -252,6 +252,12 @@ class NativeLibAnalyzer(object):
         state.ip = offset
         state.regs.lr = claripy.BVV(0xdeadbeee, 32)
 
+        def checkDeadbeeeExit(state):
+            exit_target = state.inspect.exit_target
+            print("checkDeadbeeeExit: ", exit_target)
+            print(f"R0: {state.regs.r0} R1: {state.regs.r1} R2: {state.regs.r2}")
+        state.inspect.b('exit', when=angr.BP_BEFORE, action=checkDeadbeeeExit)
+
         vtables = list()
 
         i        = 0
@@ -272,7 +278,7 @@ class NativeLibAnalyzer(object):
                     except:
                         pass
                     if addr is not None and addr == 0xdeadbeee:
-                        print(f"reached deadbeee state. R0: {s.regs.r0}")
+                        print(f"reached deadbeee state. R0: {s.regs.r0} R1: {s.regs.r1} R2: {s.regs.r2}")
                         vtable = s.mem[s.regs.r0].uint32_t.resolved
                         if not vtable.symbolic and vtable.args[0] > 0x400000:
                             first_entry = s.mem[vtable].uint32_t.resolved
