@@ -257,7 +257,7 @@ class NativeLibAnalyzer(object):
         i        = 0
         max_time = 60 * 15
         start    = time.time()
-        smgr     = proj.factory.simgr(state, veritesting=False, save_unsat=False)
+        smgr     = proj.factory.simgr(state, veritesting=True, save_unsat=False)
 
         # Hack: initialize found stash before "find" keyword is used in smgr.explore()
         smgr.stash(to_stash="found")
@@ -311,6 +311,7 @@ class NativeLibAnalyzer(object):
                 vtable = s.mem[s.regs.r0].uint32_t.resolved
                 if not vtable.symbolic and vtable.args[0] > 0x400000:
                     first_entry = s.mem[vtable].uint32_t.resolved
+                    print(f"Resolved first entry as {first_entry}, symbolic: {first_entry.symbolic}")
                     if not first_entry.symbolic:
                         section = proj.loader.find_section_containing(first_entry.args[0])
                         if section is not None and section.name == ".text":
