@@ -91,6 +91,8 @@ def _full_consumer_producer_pipeline(apka, libs=None):
     else:
         methods = apka.find_native_methods()
     
+    nmi = apka.find_native_methods_implementations(libs)
+    
     for class_name, method_name, args_str in methods:
         native_impls = apka.find_native_implementations(method_name, class_name, args_str, libs)
         if len(native_impls) == 0:
@@ -102,7 +104,7 @@ def _full_consumer_producer_pipeline(apka, libs=None):
         # consumer stub
         consumer = class_name + method_name
         consumer_impl = None
-        for method in apka.find_native_methods_implementations(libs):
+        for method in nmi:
             if method.class_name == class_name and method.method_name == method_name:
                 consumer_impl = method
                 break
