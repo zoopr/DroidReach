@@ -119,7 +119,7 @@ def _full_consumer_producer_pipeline(apka, libs=None):
         # Producer stub
         if len(idx_args) > 0:
             print("[+] Finding producer for method", consumer)
-            maybe_producers = apka.find_potential_producers(consumer_impl, lib_whitelist=libs, reachable=args.reachable)
+            maybe_producers = apka.find_potential_producers(consumer_impl, lib_whitelist=libs, reachable=False) # Consider all methods that produce a compatible vtable, explore indirect reachability later
             print("[+] Found %d possible producers" % len(maybe_producers))
             for maybe_producer in maybe_producers:
                 if maybe_producer.offset in producer_cache:
