@@ -258,6 +258,7 @@ class NativeLibAnalyzer(object):
         max_time = 60 * 15
         start    = time.time()
         smgr     = proj.factory.simgr(state, veritesting=True, save_unsat=False)
+        smgr.use_technique(angr.exploration_techniques.MemoryWatcher(min_memory=None)) # Default: 95% of all available RAM
 
         # Hack: initialize found stash before "find" keyword is used in smgr.explore()
         smgr.stash(to_stash="found")
