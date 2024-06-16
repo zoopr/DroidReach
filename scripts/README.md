@@ -3,6 +3,8 @@
 ## Batch Experiments
 
 Given an APK dataset in a tar archive, extract them one at a time and test all reachable methods for consumer-producer relationships.
+Keep in mind this type of testing will produce a number of false negatives when DroidReach gets stuck mid-analysis.
+You will also have to manually kill the Python process of the current sample.
 
 Customize your DroidReach installation location in the scripts and run `run_batch.sh archive_location.tar` to test the entire dataset. 
 Alternatively, operate only on a subset by specifying the samples in a separate `subset.txt` file and run  `run_subset.sh archive_location.tar` instead.

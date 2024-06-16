@@ -168,7 +168,7 @@ class NativeJLongAnalyzer(object):
         start    = time.time()
 
         i    = 0
-        smgr = self.project.factory.simgr(state, veritesting=True, save_unsat=False)
+        smgr = self.project.factory.simgr(state, veritesting=True, save_unsat=False, save_unconstrained=True)
         smgr.use_technique(angr.exploration_techniques.MemoryWatcher(min_memory=None)) # Default: 95% of all available RAM
 
         # Hack: initialize found stash before "find" keyword is used in smgr.explore()
@@ -209,6 +209,9 @@ class NativeJLongAnalyzer(object):
                     sys.stderr.write(f"WARNING: PC reg {found_s.regs.pc._model_concrete.value} not in map {arg_data}")
                 else:
                     tainted_calls.add(arg_data[found_s.regs.pc._model_concrete.value])
+        elif len(smgr.unconstrained)> 0:
+            sys.stderr.write("WARNING: %s @ %#x\n" % (self.libpath, addr))
+            sys.stderr.write("WARNING: %d states not found, but at least one unconstrained: PC value %x\n"  % (len(smgr.unconstrained), smgr.unconstrained[0].regs.pc._model_concrete.value))
         if i < 5:
             sys.stderr.write("WARNING: %s @ %#x\n" % (self.libpath, addr))
             sys.stderr.write("WARNING: very few iterations (%d)\n" % i)
