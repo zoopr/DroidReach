@@ -159,6 +159,21 @@ class NativeJLongAnalyzer(object):
 
         tainted_calls = set()
 
+        def checkCallEntry(state):
+            call_target = state.inspect.function_address
+            if NativeJLongAnalyzer.DEBUG:
+                print("checkCallEntry: ", call_target)
+            if call_target is None:
+                return
+            try:
+                if found_s.regs.r0._model_concrete.value in arg_data:
+                    print("checkCallEntry: Found user value as first positional argument in class method, likely consumer")
+                    tainted_calls.add(arg_data[found_s.regs.r0._model_concrete.value])
+            except:
+                sys.stderr.write("checkCallEntry: Failed to concretize R0 value")
+            
+        state.inspect.b('call', when=angr.BP_BEFORE, action=checkCallEntry)
+
         if NativeJLongAnalyzer.DEBUG:
             print("entry r0", state.regs.r0)
             print("entry r1", state.regs.r1)
@@ -175,7 +190,7 @@ class NativeJLongAnalyzer(object):
         smgr.stash(to_stash="found")
         smgr.unstash(from_stash="found")
         while len(smgr.active) > 0:
-            if len(smgr.found) > 0 or i > NativeJLongAnalyzer.MAXITER:
+            if len(smgr.found) > 0 or len(tainted_calls) > 0 or i > NativeJLongAnalyzer.MAXITER:
                 break
 
             if False and NativeJLongAnalyzer.DEBUG:

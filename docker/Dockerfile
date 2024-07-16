@@ -17,8 +17,6 @@ RUN apt-get install -y      \
 
 RUN pip install meson
 
-ENV LD_LIBRARY_PATH=/usr/local/lib/x86_64-linux-gnu/
-
 # Rizin
 RUN cd /opt                                               && \
     git clone https://github.com/rizinorg/rizin.git       && \
@@ -26,6 +24,15 @@ RUN cd /opt                                               && \
     git checkout 3752e24b989b45d30868624f4a973fef01466ad6 && \
     meson build                                           && \
     ninja -C build install
+
+# Ghidra
+RUN cd /opt                                                                                                                     && \
+    wget https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_9.2.3_build/ghidra_9.2.3_PUBLIC_20210325.zip && \
+    unzip ghidra_9.2.3_PUBLIC_20210325.zip                                                                                      && \
+    rm ghidra_9.2.3_PUBLIC_20210325.zip
+
+ENV GHIDRA_HOME=/opt/ghidra_9.2.3_PUBLIC
+ENV LD_LIBRARY_PATH=/usr/local/lib/x86_64-linux-gnu/
 
 # Android SDK
 RUN cd /opt && mkdir android-sdk && cd android-sdk                                          && \ 
@@ -39,8 +46,8 @@ RUN cd /opt && mkdir android-sdk && cd android-sdk                              
 ARG USER_ID=1000
 ARG GROUP_ID=1000
 
-RUN groupadd --gid 1000 ubuntu \
-   && useradd --uid 1000 --gid ubuntu --shell /bin/bash --create-home ubuntu
+RUN groupadd --gid ${GROUP_ID} ubuntu \
+    && useradd --uid ${USER_ID} --gid ubuntu --shell /bin/bash --create-home ubuntu
 RUN echo "ubuntu ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu && \
     chmod 0440 /etc/sudoers.d/ubuntu
 
@@ -69,15 +76,3 @@ RUN git clone https://github.com/androguard/androguard.git /tmp/androguard && \
     git checkout 8d091cbb309c0c50bf239f805cc1e0931b8dcddc                  && \
     pip install .                                                          && \
     rm -rf /tmp/androguard
-    
-USER root
-WORKDIR /root/
-# Ghidra
-RUN cd /opt && wget https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_9.2.3_build/ghidra_9.2.3_PUBLIC_20210325.zip && unzip ghidra_9.2.3_PUBLIC_20210325.zip   &&  rm ghidra_9.2.3_PUBLIC_20210325.zip
-# wget https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_9.2_build/ghidra_9.2_PUBLIC_20201113.zip && \
-# wget https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_9.2.1_build/ghidra_9.2.1_PUBLIC_20201215.zip && \
-# wget https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_9.2.2_build/ghidra_9.2.2_PUBLIC_20201229.zip && \
-# wget https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_9.2.4_build/ghidra_9.2.4_PUBLIC_20210427.zip && \
-# wget https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_10.3.3_build/ghidra_10.3.3_PUBLIC_20230829.zip && \ 
-
-ENV GHIDRA_HOME=/opt/ghidra_9.2.3_PUBLIC
