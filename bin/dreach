@@ -174,7 +174,8 @@ def _find_producer(apka, consumer, libs=None, reachable=False):
         if vtable is not None:
             print("[!] Producer: %s %s %s @ %s %#x - vtable %#x" % \
                 (maybe_producer.class_name, maybe_producer.method_name, maybe_producer.args_str, maybe_producer.libpath, maybe_producer.offset, vtable))
-            break
+            return maybe_producer
+    return None
 
 def _check_consumer(apka, consumer, libs=None):
     class_name  = "L" + "/".join(consumer.split(".")[:-1]) + ";"
@@ -193,6 +194,7 @@ def _check_consumer(apka, consumer, libs=None):
     print("[+] Checking if", consumer, "is a consumer")
     idx_args = apka.jlong_as_cpp_obj(consumer_impl, use_angr=not args.disable_angr)
     print("[!] The consumer uses the args %s as jlong pointers" % str(idx_args))
+    return idx_args
 
 def _find_vtable(apka, producer, libs=None, reachable=False):
     class_name  = "L" + "/".join(producer.split(".")[:-1]) + ";"
@@ -310,7 +312,7 @@ def _save_graph(apka, proj, graph, libpath, addr, is_cg, to_stdout=True):
                     cex_to_json(graph)
                 ))
 
-def _find_path_to(apka, what, libs=None, reachable=False, disable_multilib=False, disable_angr=False, disable_ghidra=False, full_icfg_path=False, jni_methods_whitelist=None, skip_java=False):
+def _find_path_to(apka, what, libs=None, reachable=False, disable_multilib=False, disable_angr=False, disable_ghidra=False, full_icfg_path=False, jni_methods_whitelist=None, skip_java=False, cp_extended_icfg=False):
     lib, offset = what.split("@")
 
     try:
@@ -404,7 +406,17 @@ def _find_path_to(apka, what, libs=None, reachable=False, disable_multilib=False
         if not full_icfg_path:
             g = proj.get_callgraph(src_addr)
         else:
-            g = proj.get_icfg(src_addr)
+            if not cp_extended_icfg:
+                g = proj.get_icfg(src_addr)
+            else:
+                print("Attempting to detect C-P pattern extension.")
+                is_consumer = _check_consumer(apka,what,libs)
+                if len(is_consumer) > 0:
+                    search_producer = _find_producer(apka,what,libs,reachable)
+                    if search_producer is not None:
+                        print(" Pair found. Merging ICFGs (type:lax) ")
+                        g = proj.extended_cp_merge_icfgs_lax(search_producer.offset, src_addr)
+
         elapsed = time.time() - start
         print(" OK (n_nodes: %d, n_edges: %d, elapsed: %.03f s)" % (len(g.nodes), len(g.edges), elapsed))
 
