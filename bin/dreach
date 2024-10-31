@@ -416,6 +416,7 @@ def _find_path_to(apka, what, libs=None, reachable=False, disable_multilib=False
                     if search_producer is not None:
                         print(" Pair found. Merging ICFGs (type:lax) ")
                         g = proj.extended_cp_merge_icfgs_lax(search_producer.offset, src_addr)
+                        # g = proj.extended_cp_merge_icfgs_fine(search_producer.offset, src_addr, is_consumer[0]) # At the moment we are only resolving one positional argument.
 
         elapsed = time.time() - start
         print(" OK (n_nodes: %d, n_edges: %d, elapsed: %.03f s)" % (len(g.nodes), len(g.edges), elapsed))

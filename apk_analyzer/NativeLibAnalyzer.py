@@ -231,7 +231,7 @@ class NativeLibAnalyzer(object):
             NativeLibAnalyzer.log.warning("Detected more than one vtable on jni function @ %#x" % offset)
         return vtables[0]
 
-    def _get_returned_vtable_angr(self, offset):
+    def _get_returned_vtable_angr(self, offset, full_state=False):
         MAXITER   = sys.maxsize
         MAXSTATES = 10000
 
@@ -318,6 +318,8 @@ class NativeLibAnalyzer(object):
                         if section is not None and section.name == ".text":
                             vtables.append(vtable.args[0])
         if len(vtables) > 0:
+            if full_state:
+                return smgr.found[0]
             return vtables[0]
         return None
 
@@ -382,12 +384,14 @@ class NativeLibAnalyzer(object):
         CEXProject.pm.get_plugin_by_name("AngrEmulated").build_cfg = True
         return None
 
-    def get_returned_vtable(self, offset, use_angr=False):
+    def get_returned_vtable(self, offset, use_angr=False, full_state=False):
         # Check if a JNI Method that returns a JLong is creating a C++ Object,
         # and if so return the corresponding vtable
 
         vt = None
         try:
+            if full_state:
+                return self._get_returned_vtable_angr(offset,True)
             if use_angr:
                 vt = self._get_returned_vtable_angr(offset)
             else:
@@ -400,6 +404,13 @@ class NativeLibAnalyzer(object):
             NativeLibAnalyzer.log.warning("get_returned_vtable failed (use_angr=%s), ERR: %s" % \
                 (str(use_angr), str(e)))
         return vt
+    
+    def emulate_consumer_state(self, offset,starting_state,pos_arg):
+        injected_state = self._inject_posarg(starting_state,offset,pos_arg)
+        pass #TODO rest of the Angr setup.
+
+    def _inject_posarg(self, state, offset, posarg):
+        pass #TODO: - Copy R0 value, Create new state with same memory layout and R(posarg) = old R0. Set PC to offset.
 
     def _get_jni_functions_ghidra(self):
         self._jni_functions = list()

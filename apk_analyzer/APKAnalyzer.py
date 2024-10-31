@@ -794,3 +794,7 @@ class APKAnalyzer(object):
 
         a = self.get_native_analyzer(native_method.libhash)
         return a.get_returned_vtable(native_method.offset, use_angr)
+    
+    def get_producer_exit_state_angr(self, method_offset):
+        a = self.get_native_analyzer(native_method.libhash)
+        return a.get_returned_vtable(method_offset,use_angr=True,full_state=True)
