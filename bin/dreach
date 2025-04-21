@@ -280,7 +280,7 @@ def _gen_path(apka, java_method, cex_proj, native_graph, src_native, dst_native,
                     (binfo.name if binfo is not None else "unk", insn.addr - (binfo.min_addr if binfo is not None else 0), insn.addr, insn.mnemonic))
         return res
 
-def _save_graph(apka, proj, graph, libpath, addr, is_cg, to_stdout=True):
+def _save_graph(apka, proj, graph, libpath, addr, is_cg, to_stdout=False):
     if not save_graphs:
         return
 
