@@ -508,7 +508,7 @@ def _show_lib_dep_graph(apka):
         print("\t\"%s\" -> \"%s\";" % (src, dst))
     print("}")
 
-def _full_analysis(apka, libs, disable_angr, disable_ghidra, disable_multilib, reachable_analysis):
+def _full_analysis(apka, libs, disable_angr, disable_ghidra, disable_multilib, reachable_analysis, full_icfg_path):
     if libs is None:
         libs = apka.get_analyzed_libs()
     else:
@@ -562,11 +562,14 @@ def _full_analysis(apka, libs, disable_angr, disable_ghidra, disable_multilib, r
             proj = CEXProject(main_lib, other_libs, plugins=plugins)
             cex_project_cache[method.libhash] = proj
         start = time.time()
-        g = proj.get_callgraph(src_addr)
+        if full_icfg_path:
+            g = proj.get_icfg(src_addr)
+        else:
+            g = proj.get_callgraph(src_addr)
         elapsed = time.time() - start
         print("[+] OK (n_nodes: %d, n_edges: %d, elapsed: %.03f s)" % (len(g.nodes), len(g.edges), elapsed))
 
-        _save_graph(apka, proj, g, main_lib, src_addr, True)
+        _save_graph(apka, proj, g, main_lib, src_addr, not full_icfg_path)
 
 
 def _configure_angr_ghidra(args):
@@ -639,7 +642,7 @@ def main(args):
 
     if args.full_analysis:
         save_graphs = True
-        _full_analysis(apka, libs, disable_angr, disable_ghidra, disable_multilib, reachable_analysis)
+        _full_analysis(apka, libs, disable_angr, disable_ghidra, disable_multilib, reachable_analysis, full_icfg_path)
         return 0
     
     if args.full_consumer:
