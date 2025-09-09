@@ -21,7 +21,7 @@ RUN pip install meson
 RUN cd /opt                                               && \
     git clone https://github.com/rizinorg/rizin.git       && \
     cd /opt/rizin                                         && \
-#    git checkout 3752e24b989b45d30868624f4a973fef01466ad6 && \
+    git checkout 99344f16c6ce67af5cb1e19b4a3c1915b81fff5e && \
     meson build                                           && \
     ninja -C build install
 
@@ -58,8 +58,7 @@ ENV PATH=$PATH:/home/ubuntu/.local/bin:/home/ubuntu/droidreach/bin
 # Other dependencies
 RUN pip install networkx==2.5.1 \
                 yapsy           \
-                angr \
-                #angr==9.0.8021  \
+                angr==9.2.102   \
                 rzpipe          \
                 pydot==1.4.2    \
                 pyyaml          \
